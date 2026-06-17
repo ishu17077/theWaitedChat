@@ -15,9 +15,10 @@ interface ChatTerminalProps {
   channelName: string;
   firebaseCollection?: string;
   showBotControls?: boolean;
+  activeTypists?: string[];
 }
 
-export function ChatTerminal({ id, title, currentUser, isTypingAnywhere, onTypingChange, channelName, firebaseCollection, showBotControls }: ChatTerminalProps) {
+export function ChatTerminal({ id, title, currentUser, isTypingAnywhere, activeTypists = [], onTypingChange, channelName, firebaseCollection, showBotControls }: ChatTerminalProps) {
   const [input, setInput] = useState("");
   const [visibleMessages, setVisibleMessages] = useState<ChatMessage[]>([]);
   const [queuedMessages, setQueuedMessages] = useState<ChatMessage[]>([]);
@@ -43,14 +44,6 @@ export function ChatTerminal({ id, title, currentUser, isTypingAnywhere, onTypin
   useEffect(() => {
     // Report immediately on change
     onTypingChangeRef.current(isActivelyTyping);
-
-    if (isActivelyTyping) {
-      // Keep reporting every 2 seconds to keep the global lock alive
-      const interval = setInterval(() => {
-        onTypingChangeRef.current(true);
-      }, 2000);
-      return () => clearInterval(interval);
-    }
   }, [isActivelyTyping]);
 
   useEffect(() => {
@@ -231,7 +224,7 @@ export function ChatTerminal({ id, title, currentUser, isTypingAnywhere, onTypin
 
   return (
     <div 
-      className="relative flex-1 h-[500px] bg-[#0c0c0c]/90 backdrop-blur-xl rounded-lg flex flex-col shadow-[0_0_50px_rgba(0,255,65,0.1)] border border-matrix/20 overflow-hidden font-mono text-sm group transition-all duration-300 hover:shadow-[0_0_50px_rgba(0,255,65,0.2)]"
+      className="relative flex-1 h-full min-h-[500px] bg-[#0c0c0c]/90 backdrop-blur-xl rounded-lg flex flex-col shadow-[0_0_50px_rgba(0,255,65,0.1)] border border-matrix/20 overflow-hidden font-mono text-sm group transition-all duration-300 hover:shadow-[0_0_50px_rgba(0,255,65,0.2)]"
       onClick={() => inputRef.current?.focus()}
     >
       <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-[#111] via-[#1a1a1a] to-[#111] border-b border-matrix/20 select-none">
@@ -289,7 +282,7 @@ export function ChatTerminal({ id, title, currentUser, isTypingAnywhere, onTypin
         {queuedMessages.length > 0 && (
           <div className="flex items-center text-yellow-400/80 text-xs italic mt-4 animate-pulse">
             <Sparkles size={12} className="mr-2" />
-            Holding {queuedMessages.length} message(s) while someone is typing...
+            Holding {queuedMessages.length} message(s) while {activeTypists.length > 0 ? activeTypists.join(", ") : "someone"} is typing...
           </div>
         )}
 
@@ -309,9 +302,14 @@ export function ChatTerminal({ id, title, currentUser, isTypingAnywhere, onTypin
               placeholder="Type message..."
             />
           </div>
-          {isTypingAnywhere && !isActivelyTyping && (
+          {isTypingAnywhere && !isActivelyTyping && activeTypists.length > 0 && (
             <div className="text-yellow-500/70 text-xs mt-1 ml-6">
-              Typing elsewhere... (incoming messages are paused)
+              {activeTypists.join(", ")} {activeTypists.length === 1 ? "is" : "are"} typing... (incoming messages are paused)
+            </div>
+          )}
+          {isTypingAnywhere && isActivelyTyping && (
+            <div className="text-yellow-500/70 text-xs mt-1 ml-6">
+              You are typing... (incoming messages are held for everyone)
             </div>
           )}
         </form>
