@@ -16,9 +16,10 @@ interface ChatTerminalProps {
   firebaseCollection?: string;
   showBotControls?: boolean;
   activeTypists?: string[];
+  onMessageSent?: () => void;
 }
 
-export function ChatTerminal({ id, title, currentUser, isTypingAnywhere, activeTypists = [], onTypingChange, channelName, firebaseCollection, showBotControls }: ChatTerminalProps) {
+export function ChatTerminal({ id, title, currentUser, isTypingAnywhere, activeTypists = [], onTypingChange, channelName, firebaseCollection, showBotControls, onMessageSent }: ChatTerminalProps) {
   const [input, setInput] = useState("");
   const [visibleMessages, setVisibleMessages] = useState<ChatMessage[]>([]);
   const [queuedMessages, setQueuedMessages] = useState<ChatMessage[]>([]);
@@ -181,6 +182,7 @@ export function ChatTerminal({ id, title, currentUser, isTypingAnywhere, activeT
           content: cmd,
           timestamp: Date.now() // use client timestamp for faster ordering without latency, or serverTimestamp() 
         });
+        if (onMessageSent) onMessageSent();
       } catch (err) {
         console.error("Failed to send message:", err);
         // Optional: restore the input if send failed so they don't lose it

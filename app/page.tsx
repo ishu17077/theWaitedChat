@@ -14,13 +14,13 @@ export default function Home() {
   // Local fallback typing state
   const [localTypingState, setLocalTypingState] = useState<{ [id: string]: boolean }>({});
 
-  // Global Firebase typists array
-  const [activeTypists, setActiveTypists] = useState<string[]>([]);
+  // Global Firebase typists map: { username: channelName }
+  const [activeTypists, setActiveTypists] = useState<Record<string, string>>({});
 
   // Derived boolean indicating if ANYONE in the world (or locally) is typing
-  const isTypingAnywhere = activeTypists.length > 0 || Object.values(localTypingState).some(t => t);
+  const isTypingAnywhere = Object.keys(activeTypists).length > 0 || Object.values(localTypingState).some(t => t);
 
-  const useFirebase = process.env.NEXT_PUBLIC_FIREBASE_API_KEY && process.env.NEXT_PUBLIC_FIREBASE_API_KEY !== "YOUR_API_KEY";
+  const useFirebase = !!(process.env.NEXT_PUBLIC_FIREBASE_API_KEY && process.env.NEXT_PUBLIC_FIREBASE_API_KEY !== "YOUR_API_KEY");
 
   // Persist authentication state across page reloads
   useEffect(() => {
@@ -69,19 +69,22 @@ export default function Home() {
       if (snapshot.exists()) {
         const val = snapshot.val();
         // Extract users who are actively typing (value is true)
-        const typists = Object.entries(val)
-          .filter(([_, isTyping]) => isTyping)
-          .map(([name, _]) => name);
+        const typists: Record<string, string> = {};
+        Object.entries(val).forEach(([name, channel]) => {
+          if (channel) {
+            typists[name] = channel as string;
+          }
+        });
         setActiveTypists(typists);
       } else {
-        setActiveTypists([]);
+        setActiveTypists({});
       }
     });
 
     return () => unsubscribe();
   }, [useFirebase]);
 
-  const handleTypingChange = async (id: string, isTyping: boolean) => {
+  const handleTypingChange = async (id: string, isTyping: boolean, targetChannel: string = "group_chat_room") => {
     // Always track local typing state so the queue lock works exclusively for you
     setLocalTypingState(prev => ({ ...prev, [id]: isTyping }));
     
@@ -93,7 +96,7 @@ export default function Home() {
       if (isTyping) {
         // Setup auto-cleanup if the user disconnects abruptly
         await onDisconnect(userTypingRef).remove();
-        await set(userTypingRef, true);
+        await set(userTypingRef, targetChannel);
       } else {
         await remove(userTypingRef);
         onDisconnect(userTypingRef).cancel();
@@ -123,8 +126,8 @@ export default function Home() {
             title="GLOBAL GROUP CHAT"
             currentUser={username}
             isTypingAnywhere={isTypingAnywhere}
-            activeTypists={useFirebase ? activeTypists : Object.entries(localTypingState).filter(([_, t]) => t).map(() => username)}
-            onTypingChange={(isTyping) => handleTypingChange("group-chat", isTyping)}
+            activeTypists={useFirebase ? Object.keys(activeTypists) : Object.entries(localTypingState).filter(([_, t]) => t).map(() => username)}
+            onTypingChange={(isTyping) => handleTypingChange("group-chat", isTyping, "group_chat_room")}
             channelName="group_chat_room"
             firebaseCollection="global_messages"
             showBotControls={true}
@@ -132,8 +135,8 @@ export default function Home() {
           <DirectMessagesPanel 
             currentUser={username}
             isTypingAnywhere={isTypingAnywhere} 
-            activeTypists={useFirebase ? activeTypists : Object.entries(localTypingState).filter(([_, t]) => t).map(() => username)}
-            onTypingChange={(isTyping) => handleTypingChange("direct-messages", isTyping)} 
+            activeTypists={useFirebase ? activeTypists : Object.entries(localTypingState).filter(([_, t]) => t).reduce((acc, _) => ({ ...acc, [username]: "local_dm" }), {})}
+            onTypingChange={(isTyping, channelName) => handleTypingChange("direct-messages", isTyping, channelName)} 
             useFirebase={useFirebase}
           />
         </div>
@@ -144,7 +147,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 md:px-8 flex flex-col md:flex-row items-center justify-between font-mono text-xs text-gray-500">
           <div className="flex items-center space-x-4 mb-4 md:mb-0">
             <div className={`w-2 h-2 rounded-full ${isTypingAnywhere ? "bg-yellow-400 animate-pulse" : "bg-matrix"}`} />
-            <span>{isTypingAnywhere ? `HOLDING MESSAGES: ${activeTypists.join(", ")} TYPING...` : "SYSTEM_ONLINE"}</span>
+            <span>{isTypingAnywhere ? `HOLDING MESSAGES: ${Object.keys(activeTypists).join(", ")} TYPING...` : "SYSTEM_ONLINE"}</span>
             {username && <span className="ml-4 text-matrix opacity-70">OP: {username}</span>}
           </div>
           <div className="flex space-x-6">

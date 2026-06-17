@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
 import { ChatTerminal } from "./ChatTerminal";
-import { collection, doc, onSnapshot, setDoc, arrayUnion, arrayRemove, getDocs } from "firebase/firestore";
+import { collection, doc, onSnapshot, setDoc, arrayUnion, arrayRemove, getDocs, increment } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { Globe, UserPlus, Check, X, Clock } from "lucide-react";
+import { Globe, UserPlus, Check, X, Clock, MessageSquare } from "lucide-react";
 
 interface DMProps {
   currentUser: string;
   isTypingAnywhere: boolean;
-  activeTypists: string[];
-  onTypingChange: (isTyping: boolean) => void;
+  activeTypists: Record<string, string>;
+  onTypingChange: (isTyping: boolean, channelName?: string) => void;
   useFirebase: boolean | string;
 }
 
@@ -16,6 +16,7 @@ export function DirectMessagesPanel({ currentUser, isTypingAnywhere, activeTypis
   const [friends, setFriends] = useState<string[]>([]);
   const [friendRequests, setFriendRequests] = useState<string[]>([]);
   const [sentRequests, setSentRequests] = useState<string[]>([]);
+  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
   const [selectedFriend, setSelectedFriend] = useState<string | null>("DIRECTORY");
   
   // Directory state
@@ -28,24 +29,35 @@ export function DirectMessagesPanel({ currentUser, isTypingAnywhere, activeTypis
       return;
     }
 
-    // 1. Listen to my own document for friends, incoming requests, and sent requests
     const unsubscribe = onSnapshot(doc(db, "users", currentUser), (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
         setFriends(data.friends || []);
         setFriendRequests(data.friendRequests || []);
         setSentRequests(data.sentRequests || []);
+        setUnreadCounts(data.unreadCounts || {});
       }
     });
 
     return () => unsubscribe();
   }, [useFirebase, currentUser]);
 
-  // 2. Fetch the global directory
+  // Clear unread count when switching to a tab
+  useEffect(() => {
+    if (!useFirebase || selectedFriend === "DIRECTORY" || !selectedFriend) return;
+    
+    // If we have unread messages for this friend, clear them
+    if (unreadCounts[selectedFriend] > 0) {
+      setDoc(doc(db, "users", currentUser), {
+        [`unreadCounts.${selectedFriend}`]: 0
+      }, { merge: true }).catch(e => console.error(e));
+    }
+  }, [selectedFriend, unreadCounts, useFirebase, currentUser]);
+
+  // Fetch the global directory
   useEffect(() => {
     if (!useFirebase || selectedFriend !== "DIRECTORY") return;
     
-    // Simple fetch of all users (fine for a small scale web app)
     const fetchUsers = async () => {
       try {
         const querySnapshot = await getDocs(collection(db, "users"));
@@ -62,7 +74,6 @@ export function DirectMessagesPanel({ currentUser, isTypingAnywhere, activeTypis
     };
     
     fetchUsers();
-    // Refresh directory periodically while viewing it
     const interval = setInterval(fetchUsers, 10000);
     return () => clearInterval(interval);
   }, [useFirebase, selectedFriend, currentUser]);
@@ -70,12 +81,10 @@ export function DirectMessagesPanel({ currentUser, isTypingAnywhere, activeTypis
   const sendRequest = async (targetUser: string) => {
     if (!useFirebase) return;
     try {
-      // 1. Save to my sentRequests
       await setDoc(doc(db, "users", currentUser), {
         sentRequests: arrayUnion(targetUser)
       }, { merge: true });
       
-      // 2. Push to their friendRequests
       await setDoc(doc(db, "users", targetUser), {
         friendRequests: arrayUnion(currentUser)
       }, { merge: true });
@@ -87,19 +96,16 @@ export function DirectMessagesPanel({ currentUser, isTypingAnywhere, activeTypis
   const acceptRequest = async (targetUser: string) => {
     if (!useFirebase) return;
     try {
-      // 1. Accept on my end (add friend, remove request)
       await setDoc(doc(db, "users", currentUser), {
         friends: arrayUnion(targetUser),
         friendRequests: arrayRemove(targetUser)
       }, { merge: true });
 
-      // 2. Update their end (add friend, remove from their sent)
       await setDoc(doc(db, "users", targetUser), {
         friends: arrayUnion(currentUser),
         sentRequests: arrayRemove(currentUser)
       }, { merge: true });
       
-      // Switch immediately to their chat!
       setSelectedFriend(targetUser);
     } catch (e) {
       console.error(e);
@@ -109,12 +115,10 @@ export function DirectMessagesPanel({ currentUser, isTypingAnywhere, activeTypis
   const declineRequest = async (targetUser: string) => {
     if (!useFirebase) return;
     try {
-      // Remove from my pending
       await setDoc(doc(db, "users", currentUser), {
         friendRequests: arrayRemove(targetUser)
       }, { merge: true });
       
-      // Remove from their sent
       await setDoc(doc(db, "users", targetUser), {
         sentRequests: arrayRemove(currentUser)
       }, { merge: true });
@@ -125,6 +129,19 @@ export function DirectMessagesPanel({ currentUser, isTypingAnywhere, activeTypis
 
   const getRoomId = (friend: string) => {
     return [currentUser, friend].sort().join("_");
+  };
+
+  const handleMessageSent = async () => {
+    if (!useFirebase || !selectedFriend || selectedFriend === "DIRECTORY") return;
+    
+    // Increment the unread count on the recipient's document
+    try {
+      await setDoc(doc(db, "users", selectedFriend), {
+        [`unreadCounts.${currentUser}`]: increment(1)
+      }, { merge: true });
+    } catch (e) {
+      console.error("Failed to increment unread counter", e);
+    }
   };
 
   return (
@@ -143,15 +160,31 @@ export function DirectMessagesPanel({ currentUser, isTypingAnywhere, activeTypis
           )}
         </button>
 
-        {friends.map(friend => (
-          <button
-            key={friend}
-            onClick={() => setSelectedFriend(friend)}
-            className={`px-4 py-3 font-mono text-xs border-r border-matrix/20 whitespace-nowrap transition-colors ${selectedFriend === friend ? "bg-matrix/20 text-matrix border-b-2 border-b-matrix" : "text-gray-500 hover:text-matrix/70"}`}
-          >
-            {friend}
-          </button>
-        ))}
+        {friends.map(friend => {
+          const roomName = `dm_${getRoomId(friend)}`;
+          const isFriendTypingToMe = activeTypists[friend] === roomName;
+          const unreads = unreadCounts[friend] || 0;
+          
+          return (
+            <button
+              key={friend}
+              onClick={() => setSelectedFriend(friend)}
+              className={`px-4 py-3 font-mono text-xs border-r border-matrix/20 whitespace-nowrap transition-colors flex items-center ${selectedFriend === friend ? "bg-matrix/20 text-matrix border-b-2 border-b-matrix" : "text-gray-500 hover:text-matrix/70"}`}
+            >
+              {friend}
+              
+              {isFriendTypingToMe && (
+                <span className="ml-2 text-yellow-500 animate-pulse tracking-widest font-bold">...</span>
+              )}
+              
+              {!isFriendTypingToMe && unreads > 0 && selectedFriend !== friend && (
+                <span className="ml-2 bg-yellow-500 text-black px-1.5 py-0.5 rounded-full text-[9px] font-bold animate-pulse flex items-center">
+                  <MessageSquare size={8} className="mr-1" /> {unreads}
+                </span>
+              )}
+            </button>
+          )
+        })}
       </div>
 
       {/* Content Area */}
@@ -226,10 +259,11 @@ export function DirectMessagesPanel({ currentUser, isTypingAnywhere, activeTypis
             title={`ENCRYPTED DM: ${selectedFriend}`}
             currentUser={currentUser}
             isTypingAnywhere={isTypingAnywhere}
-            activeTypists={activeTypists}
-            onTypingChange={onTypingChange}
+            activeTypists={Object.keys(activeTypists)}
+            onTypingChange={(isTyping) => onTypingChange(isTyping, `dm_${getRoomId(selectedFriend)}`)}
             channelName={`dm_${getRoomId(selectedFriend)}`}
             firebaseCollection={`private_chats/${getRoomId(selectedFriend)}/messages`}
+            onMessageSent={handleMessageSent}
           />
         ) : null}
       </div>
