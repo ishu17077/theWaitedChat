@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { customEase, getWordConfig } from "@/lib/preloader-animations";
 
-const buzzWords = ["INNOVATION", "AESTHETICS", "CODE", "CREATIVITY", "WEBMANIAC"];
+const buzzWords = ["The...", "Chat...", "that....", "wait", "TheWaitedChat"];
 
 export function Preloader() {
   const [progress, setProgress] = useState(0);
@@ -15,8 +15,8 @@ export function Preloader() {
     window.scrollTo(0, 0);
     document.body.style.overflow = "hidden";
     
-    // Total animation time 6 seconds
-    const duration = 6000; 
+    // Total animation time 9 seconds (extra delay)
+    const duration = 9000; 
     const startTime = Date.now();
     let animationFrameId: number;
 

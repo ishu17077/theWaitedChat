@@ -34,15 +34,16 @@ export function Hero() {
           className="text-6xl md:text-8xl lg:text-9xl font-bold font-sans tracking-tighter mb-6 text-glow flex items-center justify-center"
         >
           {[
-            { char: "W", shape: "hexagon", color: "#ff0055" },
-            { char: "e", shape: "circle", color: "#00ff41" },
-            { char: "b", shape: "triangle", color: "#00aaff" },
-            { char: "M", shape: "octagon", color: "#ffaa00" },
-            { char: "a", shape: "diamond", color: "#aa00ff" },
-            { char: "n", shape: "circle", color: "#ff00aa" },
-            { char: "i", shape: "hexagon", color: "#00ffff" },
-            { char: "a", shape: "triangle", color: "#aaff00" },
-            { char: "c", shape: "diamond", color: "#ff5500" },
+            { char: "T", shape: "hexagon", color: "#ff0055" },
+            { char: "h", shape: "circle", color: "#00ff41" },
+            { char: "e", shape: "triangle", color: "#00aaff" },
+            { char: "C", shape: "octagon", color: "#ffaa00" },
+            { char: "h", shape: "diamond", color: "#aa00ff" },
+            { char: "a", shape: "circle", color: "#ff00aa" },
+            { char: "t", shape: "hexagon", color: "#00ffff" },
+            { char: "A", shape: "triangle", color: "#aaff00" },
+            { char: "p", shape: "diamond", color: "#ff5500" },
+            { char: "p", shape: "circle", color: "#ff0055" },
           ].map((item, i) => (
             <AnimatedRing key={i} shape={item.shape as any} color={item.color}>
               {item.char}
