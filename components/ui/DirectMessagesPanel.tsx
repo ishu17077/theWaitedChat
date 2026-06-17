@@ -255,6 +255,7 @@ export function DirectMessagesPanel({ currentUser, isTypingAnywhere, activeTypis
           </div>
         ) : selectedFriend ? (
           <ChatTerminal
+            key={`dm-${selectedFriend}`}
             id={`dm-${selectedFriend}`}
             title={`ENCRYPTED DM: ${selectedFriend}`}
             currentUser={currentUser}

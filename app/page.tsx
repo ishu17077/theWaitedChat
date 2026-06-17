@@ -49,6 +49,19 @@ export default function Home() {
     }
   };
 
+  const handleSignOut = () => {
+    if (useFirebase) {
+      import("firebase/auth").then(({ signOut }) => {
+        import("@/lib/firebase").then(({ auth }) => {
+          signOut(auth);
+        });
+      });
+    } else {
+      localStorage.removeItem("chat_username");
+    }
+    setUsername(null);
+  };
+
   // Register user into global directory instantly upon login
   useEffect(() => {
     if (useFirebase && username) {
@@ -148,7 +161,14 @@ export default function Home() {
           <div className="flex items-center space-x-4 mb-4 md:mb-0">
             <div className={`w-2 h-2 rounded-full ${isTypingAnywhere ? "bg-yellow-400 animate-pulse" : "bg-matrix"}`} />
             <span>{isTypingAnywhere ? `HOLDING MESSAGES: ${Object.keys(activeTypists).join(", ")} TYPING...` : "SYSTEM_ONLINE"}</span>
-            {username && <span className="ml-4 text-matrix opacity-70">OP: {username}</span>}
+            {username && (
+              <div className="flex items-center ml-4 border-l border-matrix/30 pl-4">
+                <span className="text-matrix opacity-70 mr-4">OP: {username}</span>
+                <button onClick={handleSignOut} className="text-red-500 hover:text-red-400 hover:bg-red-500/10 px-2 py-0.5 rounded transition-colors font-bold text-[10px] tracking-widest border border-red-500/30">
+                  [ DISCONNECT ]
+                </button>
+              </div>
+            )}
           </div>
           <div className="flex space-x-6">
             <span className="hover:text-matrix cursor-pointer transition-colors">AOT_FIESTA_2026</span>

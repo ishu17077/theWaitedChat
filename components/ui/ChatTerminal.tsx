@@ -85,7 +85,8 @@ export function ChatTerminal({ id, title, currentUser, isTypingAnywhere, activeT
               isBot: data.isBot
             };
             
-            if (isTypingAnywhereRef.current) {
+            // Bypass queue for own messages so they appear immediately
+            if (isTypingAnywhereRef.current && !msg.isSelf) {
               setQueuedMessages(prev => prev.some(m => m.id === msg.id) ? prev : [...prev, msg]);
             } else {
               setVisibleMessages(prev => prev.some(m => m.id === msg.id) ? prev : [...prev, msg]);
@@ -101,7 +102,8 @@ export function ChatTerminal({ id, title, currentUser, isTypingAnywhere, activeT
       channel.onmessage = (event) => {
         const msg = event.data as ChatMessage;
         msg.isSelf = msg.sender === currentUser;
-        if (isTypingAnywhereRef.current) {
+        // Bypass queue for own messages so they appear immediately
+        if (isTypingAnywhereRef.current && !msg.isSelf) {
           setQueuedMessages(prev => prev.some(m => m.id === msg.id) ? prev : [...prev, msg]);
         } else {
           setVisibleMessages(prev => prev.some(m => m.id === msg.id) ? prev : [...prev, msg]);
