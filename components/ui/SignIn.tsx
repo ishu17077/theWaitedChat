@@ -133,13 +133,13 @@ export function SignIn({ onSignIn }: { onSignIn: (name: string) => void }) {
           </div>
         </div>
 
-        <div className="p-8 flex flex-col text-matrix text-base md:text-lg">
+        <div className="p-4 sm:p-6 md:p-8 flex flex-col text-matrix text-sm md:text-base">
           <div className="animate-pulse opacity-80 mb-6">
             Establishing secure connection...<br/>
             Select authentication protocol (Use ←/→ arrow keys to cycle).
           </div>
 
-          <div className="flex space-x-4 mb-6 border-b border-matrix/30 pb-2">
+          <div className="flex flex-wrap gap-2 md:gap-4 mb-6 border-b border-matrix/30 pb-2">
              <button onClick={() => setAuthMode("anonymous")} className={`px-2 py-1 transition-colors ${authMode === "anonymous" ? "bg-matrix text-black font-bold" : "text-matrix hover:bg-matrix/10"}`}>[ ANONYMOUS ]</button>
              <button onClick={() => setAuthMode("google")} className={`px-2 py-1 transition-colors ${authMode === "google" ? "bg-matrix text-black font-bold" : "text-matrix hover:bg-matrix/10"}`}>[ GOOGLE ]</button>
              <button onClick={() => setAuthMode("email")} className={`px-2 py-1 transition-colors ${authMode === "email" ? "bg-matrix text-black font-bold" : "text-matrix hover:bg-matrix/10"}`}>[ EMAIL ]</button>
@@ -147,9 +147,9 @@ export function SignIn({ onSignIn }: { onSignIn: (name: string) => void }) {
 
           {authMode === "anonymous" && (
             <form onSubmit={handleAnonymous} className="flex flex-col space-y-4">
-              <div className="text-gray-400 text-sm border-l-2 border-matrix/50 pl-4 py-2">Enter designated operative alias to join the Global Chat Relay.</div>
-              <div className="flex items-center text-xl font-bold mt-4">
-                <span className="mr-3 text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-blue-500">Identify:~$</span>
+              <div className="text-gray-400 text-xs sm:text-sm border-l-2 border-matrix/50 pl-3 sm:pl-4 py-2">Enter designated operative alias to join the Global Chat Relay.</div>
+              <div className="flex flex-col sm:flex-row sm:items-center text-base sm:text-xl font-bold mt-2 sm:mt-4">
+                <span className="mb-2 sm:mb-0 sm:mr-3 text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-blue-500">Identify:~$</span>
                 <input
                   ref={inputRef}
                   type="text"
